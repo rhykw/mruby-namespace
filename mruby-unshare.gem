@@ -1,0 +1,6 @@
+name: mruby-unshare
+description: Unshare class
+author: Russel Hunter Yukawa
+website: https://github.com/rhykw/mruby-unshare
+protocol: git
+repository: https://github.com/rhykw/mruby-unshare.git
