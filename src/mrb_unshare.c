@@ -6,8 +6,9 @@
 ** See Copyright Notice in LICENSE
 */
 
-#include "sched.h"
+#define _GNU_SOURCE 1
 
+#include <sched.h>
 #include <unistd.h>
 #include <sys/types.h>
 
