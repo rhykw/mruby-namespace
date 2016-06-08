@@ -10,6 +10,6 @@ before_script:
   - cd ../
   - git clone https://github.com/mruby/mruby.git
   - cd mruby
-  - cp -fp ../mruby-unshare/.travis_build_config.rb build_config.rb
+  - cp -fp ../mruby-namespace/.travis_build_config.rb build_config.rb
 script:
   - make all test

@@ -1,4 +1,4 @@
-MRuby::Gem::Specification.new('mruby-unshare') do |spec|
+MRuby::Gem::Specification.new('mruby-namespace') do |spec|
   spec.license = 'MIT'
   spec.authors = 'Russel Hunter Yukawa'
 end

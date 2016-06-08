@@ -1,4 +1,4 @@
-# mruby-unshare   [![Build Status](https://travis-ci.org/rhykw/mruby-unshare.svg?branch=master)](https://travis-ci.org/rhykw/mruby-unshare)
+# mruby-namespace   [![Build Status](https://travis-ci.org/rhykw/mruby-namespace.svg?branch=master)](https://travis-ci.org/rhykw/mruby-namespace)
 Unshare class
 ## install by mrbgems
 - add conf.gem line to `build_config.rb`
@@ -8,7 +8,7 @@ MRuby::Build.new do |conf|
 
     # ... (snip) ...
 
-    conf.gem :github => 'rhykw/mruby-unshare'
+    conf.gem :github => 'rhykw/mruby-namespace'
 end
 ```
 ## example
