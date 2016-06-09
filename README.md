@@ -1,5 +1,5 @@
 # mruby-namespace   [![Build Status](https://travis-ci.org/rhykw/mruby-namespace.svg?branch=master)](https://travis-ci.org/rhykw/mruby-namespace)
-Unshare class
+Namespace class
 ## install by mrbgems
 - add conf.gem line to `build_config.rb`
 
@@ -13,35 +13,30 @@ end
 ```
 ## example
 ```ruby
-> Unshare.getuid
+> Namespace.getuid
  => 500
-> Unshare.getgid
+> Namespace.getgid
  => 500
->
- => nil
-> Unshare.unshare(Unshare::CLONE_NEWUSER|Unshare::CLONE_NEWNET)
+
+> Namespace.unshare(Namespace::CLONE_NEWUSER|Namespace::CLONE_NEWNET)
  => 0
->
- => nil
-> Unshare.getuid
+
+> Namespace.getuid
  => 65534
-> Unshare.getgid
+> Namespace.getgid
  => 65534
->
- => nil
+
 > File.open('/proc/self/uid_map','wb+').write('0 500 1')
  => 7
 > File.open('/proc/self/setgroups','w+').write('deny')
  => 4
 > File.open('/proc/self/gid_map','wb+').write('0 500 1')
  => 7
->
- => nil
-> Unshare.getuid
+
+> Namespace.getuid
  => 0
-> Unshare.getgid
+> Namespace.getgid
  => 0
->
 ```
 
 ## License
