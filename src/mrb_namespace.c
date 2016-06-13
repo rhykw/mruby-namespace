@@ -1,26 +1,26 @@
 /*
 ** mrb_namespace.c - For linux namespace
 **
-** Copyright (c) Russel Hunter Yukawa 2016
+** Copyright (c) Russel Hunter Yukawa / Uchio Kondo 2016
 **
 ** See Copyright Notice in LICENSE
 */
 
 #define _GNU_SOURCE 1
 
+#include <stdio.h>
 #include <sched.h>
 #include <unistd.h>
 #include <sys/types.h>
 
 #include "mruby.h"
 #include "mruby/data.h"
+#include "mruby/error.h"
 #include "mrb_namespace.h"
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
 
 typedef struct {
-  char *str;
-  int len;
 } mrb_namespace_data;
 
 static const struct mrb_data_type mrb_namespace_data_type = {
@@ -30,8 +30,6 @@ static const struct mrb_data_type mrb_namespace_data_type = {
 static mrb_value mrb_namespace_init(mrb_state *mrb, mrb_value self)
 {
   mrb_namespace_data *data;
-  /*char *str;
-  int len;*/
 
   data = (mrb_namespace_data *)DATA_PTR(self);
   if (data) {
@@ -39,8 +37,6 @@ static mrb_value mrb_namespace_init(mrb_state *mrb, mrb_value self)
   }
   DATA_TYPE(self) = &mrb_namespace_data_type;
   DATA_PTR(self) = NULL;
-
-  DATA_PTR(self) = data;
 
   return self;
 }
@@ -72,6 +68,44 @@ static mrb_value mrb_namespace_unshare(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value((mrb_int) unshare(unshare_flags));
 }
 
+static mrb_value mrb_namespace_setns(mrb_state *mrb, mrb_value self)
+{
+  int fileno, nstype, ret;
+
+  mrb_get_args(mrb, "ii", &fileno, &nstype);
+  ret = setns(fileno, nstype);
+  if (ret < 0) {
+    mrb_sys_fail(mrb, "setns failed");
+  }
+
+  return mrb_fixnum_value(ret);
+}
+
+static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
+{
+  int pid, nstype, fileno, ret;
+  char * procpath;
+  const char * procpath_fmt = "/proc/%i/ns/%s";
+
+  mrb_get_args(mrb, "ii", &pid, &nstype);
+  switch (nstype) {
+  case CLONE_NEWNS:
+    asprintf(&procpath, procpath_fmt, pid, "mnt");
+    break;
+  default:
+    mrb_raise(mrb, NULL, "invalid namespace id");
+    return mrb_fixnum_value(-1);
+  }
+  fileno = open(procpath, O_RDONLY);
+
+  ret = setns(fileno, nstype);
+  close(fileno);
+  if (ret < 0) {
+    mrb_sys_fail(mrb, "setns failed");
+  }
+
+  return mrb_fixnum_value(ret);
+}
 
 void mrb_mruby_namespace_gem_init(mrb_state *mrb)
 {
@@ -79,6 +113,7 @@ void mrb_mruby_namespace_gem_init(mrb_state *mrb)
     namespace = mrb_define_class(mrb, "Namespace", mrb->object_class);
     mrb_define_method(mrb, namespace, "initialize", mrb_namespace_init, MRB_ARGS_NONE());
     mrb_define_class_method(mrb, namespace, "unshare", mrb_namespace_unshare, MRB_ARGS_REQ(1));
+    mrb_define_class_method(mrb, namespace, "setns", mrb_namespace_setns, MRB_ARGS_REQ(2));
     mrb_define_class_method(mrb, namespace, "getuid", mrb_namespace_getuid, MRB_ARGS_NONE());
     mrb_define_class_method(mrb, namespace, "getgid", mrb_namespace_getgid, MRB_ARGS_NONE());
     mrb_define_class_method(mrb, namespace, "getpid", mrb_namespace_getpid, MRB_ARGS_NONE());
@@ -105,6 +140,9 @@ void mrb_mruby_namespace_gem_init(mrb_state *mrb)
     mrb_define_const(mrb, namespace, "CLONE_NEWPID",              mrb_fixnum_value(CLONE_NEWPID));
     mrb_define_const(mrb, namespace, "CLONE_NEWNET",              mrb_fixnum_value(CLONE_NEWNET));
     mrb_define_const(mrb, namespace, "CLONE_IO",                  mrb_fixnum_value(CLONE_IO));
+#ifdef CLONE_NEWCGROUP
+    mrb_define_const(mrb, namespace, "CLONE_NEWCGROUP",           mrb_fixnum_value(CLONE_NEWCGROUP));
+#endif
 
     DONE;
 }
