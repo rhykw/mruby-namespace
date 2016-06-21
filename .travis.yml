@@ -10,6 +10,6 @@ install:
   - sudo apt-get -qq install rake bison git gperf libc6-dev
 before_script:
   - git clone --depth=1 https://github.com/mruby/mruby.git
-  - cd mruby && cp -fp ../.travis_build_config.rb build_config.rb
+  - cd mruby && cp -fp ../.travis_build_config.rb build_config.rb && cd -
 script:
   - cd mruby && make all test
