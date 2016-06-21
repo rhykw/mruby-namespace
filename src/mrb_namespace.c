@@ -70,7 +70,7 @@ static mrb_value mrb_namespace_unshare(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value((mrb_int) unshare(unshare_flags));
 }
 
-static mrb_value mrb_namespace_setns(mrb_state *mrb, mrb_value self)
+static mrb_value mrb_namespace_setns_by_fd(mrb_state *mrb, mrb_value self)
 {
   int fileno, nstype, ret;
 
@@ -115,7 +115,8 @@ void mrb_mruby_namespace_gem_init(mrb_state *mrb)
     namespace = mrb_define_class(mrb, "Namespace", mrb->object_class);
     mrb_define_method(mrb, namespace, "initialize", mrb_namespace_init, MRB_ARGS_NONE());
     mrb_define_class_method(mrb, namespace, "unshare", mrb_namespace_unshare, MRB_ARGS_REQ(1));
-    mrb_define_class_method(mrb, namespace, "setns", mrb_namespace_setns, MRB_ARGS_REQ(2));
+    mrb_define_class_method(mrb, namespace, "setns_by_fd", mrb_namespace_setns_by_fd, MRB_ARGS_REQ(2));
+    mrb_define_class_method(mrb, namespace, "setns_by_pid", mrb_namespace_setns_by_pid, MRB_ARGS_REQ(2));
     mrb_define_class_method(mrb, namespace, "getuid", mrb_namespace_getuid, MRB_ARGS_NONE());
     mrb_define_class_method(mrb, namespace, "getgid", mrb_namespace_getgid, MRB_ARGS_NONE());
     mrb_define_class_method(mrb, namespace, "getpid", mrb_namespace_getpid, MRB_ARGS_NONE());
