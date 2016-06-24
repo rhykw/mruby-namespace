@@ -11,4 +11,4 @@ before_script:
   - git clone --depth=1 https://github.com/mruby/mruby.git
   - cd mruby && cp -fp ../.travis_build_config.rb build_config.rb && cd -
 script:
-  - cd mruby && sudo make all test
+  - rake test
