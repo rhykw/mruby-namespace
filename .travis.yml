@@ -1,15 +1,14 @@
 language: c
+
 compiler:
   - gcc
   - clang
 before_install:
-    - sudo apt-get -qq update
+  - sudo apt-get -qq update
 install:
-    - sudo apt-get -qq install rake bison git gperf libc6-dev
+  - sudo apt-get -qq install rake bison git gperf libc6-dev
 before_script:
-  - cd ../
-  - git clone https://github.com/mruby/mruby.git
-  - cd mruby
-  - cp -fp ../mruby-namespace/.travis_build_config.rb build_config.rb
+  - git clone --depth=1 https://github.com/mruby/mruby.git
+  - cd mruby && cp -fp ../.travis_build_config.rb build_config.rb && cd -
 script:
-  - make all test
+  - rake test
