@@ -85,48 +85,80 @@ static mrb_value mrb_namespace_setns_by_fd(mrb_state *mrb, mrb_value self)
 
 static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
 {
-  int pid, nstype, fileno, ret;
+  int pid, nsflag, fileno, ret;
+  int ns_count = 0;
   char *procpath;
   const char *procpath_fmt = "/proc/%i/ns/%s";
 
-  mrb_get_args(mrb, "ii", &pid, &nstype);
-  switch (nstype) {
-  case CLONE_NEWNS:
-    asprintf(&procpath, procpath_fmt, pid, "mnt");
-    break;
-  case CLONE_NEWUTS:
-    asprintf(&procpath, procpath_fmt, pid, "uts");
-    break;
-  case CLONE_NEWIPC:
-    asprintf(&procpath, procpath_fmt, pid, "ipc");
-    break;
-  case CLONE_NEWUSER:
-    asprintf(&procpath, procpath_fmt, pid, "user");
-    break;
-  case CLONE_NEWPID:
-    asprintf(&procpath, procpath_fmt, pid, "pid");
-    break;
-  case CLONE_NEWNET:
-    asprintf(&procpath, procpath_fmt, pid, "net");
-    break;
 #ifdef CLONE_NEWCGROUP
-  case CLONE_NEWCGROUP:
-    asprintf(&procpath, procpath_fmt, pid, "cgroup");
-    break;
+  int namespaces[8] = {
+    CLONE_NEWNS,
+    CLONE_NEWUTS,
+    CLONE_NEWIPC,
+    CLONE_NEWUSER,
+    CLONE_NEWPID,
+    CLONE_NEWNET,
+    CLONE_NEWCGROUP,
+    0,
+  };
+#else
+  int namespaces[7] = {
+    CLONE_NEWNS,
+    CLONE_NEWUTS,
+    CLONE_NEWIPC,
+    CLONE_NEWUSER,
+    CLONE_NEWPID,
+    CLONE_NEWNET,
+    0,
+  };
 #endif
-  default:
-    mrb_raise(mrb, NULL, "invalid namespace id");
-    return mrb_fixnum_value(-1);
-  }
-  fileno = open(procpath, O_RDONLY);
 
-  ret = setns(fileno, nstype);
-  close(fileno);
-  if (ret < 0) {
-    mrb_sys_fail(mrb, "setns failed");
+  mrb_get_args(mrb, "ii", &pid, &nsflag);
+
+  for(int i=0; namespaces[i]; ++i) {
+    int curns = nsflag & namespaces[i];
+    if(!curns) continue;
+
+    switch (curns) {
+    case CLONE_NEWNS:
+      asprintf(&procpath, procpath_fmt, pid, "mnt");
+      break;
+    case CLONE_NEWUTS:
+      asprintf(&procpath, procpath_fmt, pid, "uts");
+      break;
+    case CLONE_NEWIPC:
+      asprintf(&procpath, procpath_fmt, pid, "ipc");
+      break;
+    case CLONE_NEWUSER:
+      asprintf(&procpath, procpath_fmt, pid, "user");
+      break;
+    case CLONE_NEWPID:
+      asprintf(&procpath, procpath_fmt, pid, "pid");
+      break;
+    case CLONE_NEWNET:
+      asprintf(&procpath, procpath_fmt, pid, "net");
+      break;
+#ifdef CLONE_NEWCGROUP
+    case CLONE_NEWCGROUP:
+      asprintf(&procpath, procpath_fmt, pid, "cgroup");
+      break;
+#endif
+    default:
+      mrb_raise(mrb, NULL, "invalid namespace id");
+      return mrb_fixnum_value(-1);
+    }
+
+    fileno = open(procpath, O_RDONLY);
+
+    ret = setns(fileno, curns);
+    close(fileno);
+    if (ret < 0) {
+      mrb_sys_fail(mrb, "setns failed");
+    }
+    ns_count++;
   }
 
-  return mrb_fixnum_value(ret);
+  return mrb_fixnum_value(ns_count);
 }
 
 void mrb_mruby_namespace_gem_init(mrb_state *mrb)
