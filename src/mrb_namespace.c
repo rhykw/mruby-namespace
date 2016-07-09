@@ -94,6 +94,26 @@ static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
   case CLONE_NEWNS:
     asprintf(&procpath, procpath_fmt, pid, "mnt");
     break;
+  case CLONE_NEWUTS:
+    asprintf(&procpath, procpath_fmt, pid, "uts");
+    break;
+  case CLONE_NEWIPC:
+    asprintf(&procpath, procpath_fmt, pid, "ipc");
+    break;
+  case CLONE_NEWUSER:
+    asprintf(&procpath, procpath_fmt, pid, "user");
+    break;
+  case CLONE_NEWPID:
+    asprintf(&procpath, procpath_fmt, pid, "pid");
+    break;
+  case CLONE_NEWNET:
+    asprintf(&procpath, procpath_fmt, pid, "net");
+    break;
+#ifdef CLONE_NEWCGROUP
+  case CLONE_NEWCGROUP:
+    asprintf(&procpath, procpath_fmt, pid, "cgroup");
+    break;
+#endif
   default:
     mrb_raise(mrb, NULL, "invalid namespace id");
     return mrb_fixnum_value(-1);
