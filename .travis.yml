@@ -1,14 +1,27 @@
 language: c
+addons:
+  apt:
+    packages:
+      - rake
+      - bison
+      - git
+      - gperf
+      - libc6-dev
 
 compiler:
   - gcc
   - clang
+env:
+  - MRUBY_VERSION=1.2.0
+  - MRUBY_VERSION=master
 before_install:
   - sudo apt-get -qq update
-install:
-  - sudo apt-get -qq install rake bison git gperf libc6-dev
-before_script:
-  - git clone --depth=1 https://github.com/mruby/mruby.git
-  - cd mruby && cp -fp ../.travis_build_config.rb build_config.rb && cd -
+matrix:
+  allow_failures:
+    - env: MRUBY_VERSION=master
+branches:
+  only:
+    - master
+
 script:
   - rake test
