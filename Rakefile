@@ -1,11 +1,29 @@
+MRUBY_CONFIG=File.expand_path(ENV["MRUBY_CONFIG"] || ".travis_build_config.rb")
+MRUBY_VERSION=ENV["MRUBY_VERSION"] || "1.2.0"
+
+file :mruby do
+  cmd =  "git clone --depth=1 git://github.com/mruby/mruby.git"
+  if MRUBY_VERSION != 'master'
+    cmd << " && cd mruby"
+    cmd << " && git fetch --tags && git checkout $(git rev-parse #{MRUBY_VERSION})"
+  end
+  sh cmd
+end
+
 desc 'create binary'
-task 'mruby/bin/mrbtest' do
-  sh "cd mruby && cp -fp ../.travis_build_config.rb build_config.rb && make all"
+task :compile => :mruby do
+  sh "cd mruby && MRUBY_CONFIG=#{MRUBY_CONFIG} rake all"
 end
 
 desc 'run test as root'
-task :test => 'mruby/bin/mrbtest' do
+task :test => :compile do
   sh "cd mruby && sudo bin/mrbtest"
 end
 
-task :default => :test
+desc "cleanup"
+task :clean do
+  exit 0 unless File.directory?('mruby')
+  sh "cd mruby && rake deep_clean"
+end
+
+task :default => :compile
