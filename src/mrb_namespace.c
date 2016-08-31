@@ -15,9 +15,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "mruby.h"
-#include "mruby/data.h"
-#include "mruby/error.h"
+#include <mruby.h>
+#include <mruby/data.h>
+#include <mruby/error.h>
 #include "mrb_namespace.h"
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
