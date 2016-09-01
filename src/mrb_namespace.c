@@ -161,7 +161,7 @@ static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(ns_count);
 }
 
-void mrb_mruby_namespace_gem_init(mrb_state *mrb)
+void mrb_mruby_linux_namespace_gem_init(mrb_state *mrb)
 {
   struct RClass *namespace;
   namespace = mrb_define_class(mrb, "Namespace", mrb->object_class);
@@ -202,6 +202,6 @@ void mrb_mruby_namespace_gem_init(mrb_state *mrb)
   DONE;
 }
 
-void mrb_mruby_namespace_gem_final(mrb_state *mrb)
+void mrb_mruby_linux_namespace_gem_final(mrb_state *mrb)
 {
 }
