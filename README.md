@@ -1,34 +1,36 @@
-# mruby-namespace   [![Build Status](https://travis-ci.org/rhykw/mruby-namespace.svg?branch=master)](https://travis-ci.org/rhykw/mruby-namespace)
-Unshare class
+# mruby-linux-namespace   [![Build Status](https://travis-ci.org/haconiwa/mruby-linux-namespace.svg?branch=master)](https://travis-ci.org/haconiwa/mruby-linux-namespace)
+
+A mruby gem using unshare/setns to control linux namespce.
+
 ## install by mrbgems
+
 - add conf.gem line to `build_config.rb`
 
 ```ruby
 MRuby::Build.new do |conf|
 
-    # ... (snip) ...
+  # ... (snip) ...
 
-    conf.gem :github => 'rhykw/mruby-namespace'
+  conf.gem :github => haconiwa/mruby-linux-namespace'
 end
 ```
+
 ## example
+
 ```ruby
-> Unshare.getuid
+> Namespace.getuid
  => 500
-> Unshare.getgid
+> Namespace.getgid
  => 500
->
- => nil
-> Unshare.unshare(Unshare::CLONE_NEWUSER|Unshare::CLONE_NEWNET)
+
+> Namespace.unshare(Namespace::CLONE_NEWUSER|Namespace::CLONE_NEWNET)
  => 0
->
- => nil
-> Unshare.getuid
+
+> Namespace.getuid
  => 65534
-> Unshare.getgid
+> Namespace.getgid
  => 65534
->
- => nil
+
 > File.open('/proc/self/uid_map','wb+').write('0 500 1')
  => 7
 > File.open('/proc/self/setgroups','w+').write('deny')
@@ -37,13 +39,13 @@ end
  => 7
 >
  => nil
-> Unshare.getuid
+> Namespace.getuid
  => 0
-> Unshare.getgid
+> Namespace.getgid
  => 0
 >
 ```
 
 ## License
-under the MIT License:
-- see LICENSE file
+
+under the MIT License: see LICENSE file
