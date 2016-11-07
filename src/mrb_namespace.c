@@ -84,7 +84,7 @@ static mrb_value mrb_namespace_setns_by_fd(mrb_state *mrb, mrb_value self)
   int fileno, nstype, ret;
 
   mrb_get_args(mrb, "ii", &fileno, &nstype);
-  ret = setns(fileno, nstype);
+  ret = mrb_namespace_setns(mrb, fileno, nstype);
   if (ret < 0) {
     mrb_sys_fail(mrb, "setns failed");
   }
@@ -159,7 +159,7 @@ static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
 
     fileno = open(procpath, O_RDONLY);
 
-    ret = setns(fileno, curns);
+    ret = mrb_namespace_setns(mrb, fileno, curns);
     close(fileno);
     if (ret < 0) {
       mrb_sys_fail(mrb, "setns failed");
