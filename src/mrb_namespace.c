@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <features.h>
 
 #include <mruby.h>
 #include <mruby/data.h>
@@ -43,6 +44,14 @@ static mrb_value mrb_namespace_init(mrb_state *mrb, mrb_value self)
   return self;
 }
 
+static int mrb_namespace_setns(mrb_state *mrb, int fd, int nstype) {
+#if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 14
+  return setns(fd, nstype);
+#else
+  mrb_raise(mrb, E_RUNTIME_ERROR, "Cannot use setns(2) in this platform!");
+  return -1;
+#endif
+}
 
 static mrb_value mrb_namespace_getuid(mrb_state *mrb, mrb_value self)
 {
@@ -75,7 +84,7 @@ static mrb_value mrb_namespace_setns_by_fd(mrb_state *mrb, mrb_value self)
   int fileno, nstype, ret;
 
   mrb_get_args(mrb, "ii", &fileno, &nstype);
-  ret = setns(fileno, nstype);
+  ret = mrb_namespace_setns(mrb, fileno, nstype);
   if (ret < 0) {
     mrb_sys_fail(mrb, "setns failed");
   }
@@ -150,7 +159,7 @@ static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
 
     fileno = open(procpath, O_RDONLY);
 
-    ret = setns(fileno, curns);
+    ret = mrb_namespace_setns(mrb, fileno, curns);
     close(fileno);
     if (ret < 0) {
       mrb_sys_fail(mrb, "setns failed");
