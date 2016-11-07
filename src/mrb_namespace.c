@@ -48,7 +48,7 @@ static int mrb_namespace_setns(mrb_state *mrb, int fd, int nstype) {
 #if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 14
   return setns(fd, nstype);
 #else
-  mrb_raise(mrb, E_RUNTIME_ERROR, "Cannot use setns(2) in this platform!")
+  mrb_raise(mrb, E_RUNTIME_ERROR, "Cannot use setns(2) in this platform!");
   return -1;
 #endif
 }
