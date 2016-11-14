@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <error.h>
 #include <features.h>
 
 #include <mruby.h>
@@ -30,7 +31,8 @@
 #endif
 
 static int setns(int fd, int nstype) {
-  return (int)syscall((long)SYS_setns, fd, nstype);
+  long ret = syscall(SYS_setns, fd, nstype);
+  return (int)ret;
 }
 #endif
 
