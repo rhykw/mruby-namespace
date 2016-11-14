@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <error.h>
 #include <features.h>
 
 #include <mruby.h>
@@ -22,6 +23,18 @@
 #include "mrb_namespace.h"
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
+
+#if __GLIBC__ != 2 || __GLIBC_MINOR__ < 14
+#include <sys/syscall.h>
+#ifndef SYS_setns
+#define SYS_setns 308
+#endif
+
+static int setns(int fd, int nstype) {
+  long ret = syscall(SYS_setns, fd, nstype);
+  return (int)ret;
+}
+#endif
 
 typedef struct {
 } mrb_namespace_data;
@@ -45,12 +58,7 @@ static mrb_value mrb_namespace_init(mrb_state *mrb, mrb_value self)
 }
 
 static int mrb_namespace_setns(mrb_state *mrb, int fd, int nstype) {
-#if __GLIBC__ == 2 && __GLIBC_MINOR__ >= 14
   return setns(fd, nstype);
-#else
-  mrb_raise(mrb, E_RUNTIME_ERROR, "Cannot use setns(2) in this platform!");
-  return -1;
-#endif
 }
 
 static mrb_value mrb_namespace_getuid(mrb_state *mrb, mrb_value self)
