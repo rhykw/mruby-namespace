@@ -1,6 +1,7 @@
 (1..3).to_a.map do |i|
   Namespace.clone(Namespace::CLONE_NEWNS|Namespace::CLONE_NEWPID) do
     puts "Process: ##{i}"
+    system "ls -l /proc/self/ns/pid"
     exec '/bin/sleep', (i * 5).to_s
   end
 end
