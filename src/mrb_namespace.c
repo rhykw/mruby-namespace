@@ -184,39 +184,22 @@ static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(ns_count);
 }
 
-typedef struct mrb_clone_params {
+struct mrb_clone_params {
   mrb_state *mrb;
-  struct RProc *block;
-} mrb_clone_params;
-
-/* from https://github.com/mattn/mruby-thread/blob/master/src/mrb_thread.c */
-static mrb_sym migrate_sym(mrb_state *mrb, mrb_sym sym, mrb_state *mrb2)
-{
-  mrb_int len;
-  const char *p = mrb_sym2name_len(mrb, sym, &len);
-  return mrb_intern_static(mrb2, p, len);
-}
-
-static void migrate_all_symbols(mrb_state *mrb, mrb_state *mrb2)
-{
-  mrb_sym i;
-  for (i = 1; i < mrb->symidx + 1; i++) {
-    migrate_sym(mrb, i, mrb2);
-  }
-}
+  mrb_value block;
+};
+static struct mrb_clone_params* clone_params = NULL;
 
 static int mrb_clone_childfunc(void *params)
 {
-  mrb_clone_params *p;
-  mrb_state *mrb;
-  /* mrb_value result; */
+  if(!clone_params) {
+    printf("[BUG] No clone params...\n");
+    abort();
+  }
 
-  printf("Cloned...\n");
-  p = (mrb_clone_params *)params;
-  mrb = p->mrb;
-  printf("restore: %p, %p, %p\n", p, mrb, p->block);
-  //mrb_yield_with_class(p->mrb, mrb_obj_value(p->block), 0, NULL, mrb_nil_value(), p->mrb->object_class);
-  mrb_funcall(mrb, mrb_obj_value(mrb->object_class), "puts", 1, mrb_str_new_lit(mrb, "Hello from clone"));
+  mrb_state *mrb = clone_params->mrb;
+  mrb_yield_with_class(mrb, clone_params->block, 0, NULL, mrb_nil_value(), mrb->object_class);
+  /* mrb_funcall(mrb, mrb_obj_value(mrb->object_class), "puts", 1, mrb_str_new_lit(mrb, "Hello from clone")); */
 
   _exit(0);
   return 0;
@@ -226,7 +209,7 @@ static int mrb_clone_childfunc(void *params)
 
 static mrb_value mrb_namespace_clone(mrb_state *mrb, mrb_value self)
 {
-  mrb_clone_params *p;
+  struct mrb_clone_params *p;
   mrb_int flag;
   mrb_value block;
   char *stack, *stack_top;
@@ -235,13 +218,9 @@ static mrb_value mrb_namespace_clone(mrb_state *mrb, mrb_value self)
   mrb_get_args(mrb, "i&", &flag, &block);
 
   if (!mrb_nil_p(block)) {
-    p = (mrb_clone_params *)malloc(sizeof(mrb_clone_params));
-    p->mrb = mrb_open_allocf(mrb->allocf, mrb->allocf_ud);
-    migrate_all_symbols(mrb, p->mrb);
-    p->block = mrb_proc_new(mrb, mrb_proc_ptr(block)->body.irep);
-    p->block->target_class = p->mrb->object_class;
-
-    printf("alloc: %p, %p, %p\n", p, p->mrb, p->block);
+    p = (struct mrb_clone_params *)malloc(sizeof(struct mrb_clone_params));
+    p->mrb = mrb;
+    p->block = block;
 
     stack = malloc(STACK_SIZE);
     if (p == NULL || stack == NULL)
@@ -249,11 +228,12 @@ static mrb_value mrb_namespace_clone(mrb_state *mrb, mrb_value self)
 
     stack_top = stack + STACK_SIZE;
 
+    clone_params = p;
     pid = clone(
       mrb_clone_childfunc,
       stack_top,
       SIGCHLD|flag,
-      (void *)p);
+      NULL);
     if(pid < 0) {
       perror("clone");
       mrb_sys_fail(mrb, "clone failed");
@@ -266,7 +246,7 @@ static mrb_value mrb_namespace_clone(mrb_state *mrb, mrb_value self)
   return mrb_nil_value();
 }
 
-void mrb_mruby_namespace_gem_init(mrb_state *mrb)
+void mrb_mruby_linux_namespace_gem_init(mrb_state *mrb)
 {
   struct RClass *namespace;
   namespace = mrb_define_class(mrb, "Namespace", mrb->object_class);
