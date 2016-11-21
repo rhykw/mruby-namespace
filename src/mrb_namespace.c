@@ -188,7 +188,7 @@ struct mrb_clone_params {
   mrb_state *mrb;
   mrb_value block;
 };
-static struct mrb_clone_params* clone_params = NULL;
+static volatile struct mrb_clone_params* clone_params = NULL;
 
 static int mrb_clone_childfunc(void *params)
 {
@@ -198,14 +198,14 @@ static int mrb_clone_childfunc(void *params)
   }
 
   mrb_state *mrb = clone_params->mrb;
-  mrb_yield_with_class(mrb, clone_params->block, 0, NULL, mrb_nil_value(), mrb->object_class);
+  mrb_value ret = mrb_yield_with_class(mrb, clone_params->block, 0, NULL, mrb_nil_value(), mrb->object_class);
   /* mrb_funcall(mrb, mrb_obj_value(mrb->object_class), "puts", 1, mrb_str_new_lit(mrb, "Hello from clone")); */
 
   _exit(0);
   return 0;
 }
 
-#define STACK_SIZE 65535
+#define STACK_SIZE 4096
 
 static mrb_value mrb_namespace_clone(mrb_state *mrb, mrb_value self)
 {
