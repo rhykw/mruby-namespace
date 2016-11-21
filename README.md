@@ -1,6 +1,6 @@
 # mruby-linux-namespace   [![Build Status](https://travis-ci.org/haconiwa/mruby-linux-namespace.svg?branch=master)](https://travis-ci.org/haconiwa/mruby-linux-namespace)
 
-A mruby gem using unshare/setns to control linux namespce.
+A mruby gem using unshare/setns/clone to control linux namespaces.
 
 ## install by mrbgems
 
@@ -11,24 +11,26 @@ MRuby::Build.new do |conf|
 
   # ... (snip) ...
 
-  conf.gem :github => haconiwa/mruby-linux-namespace'
+  conf.gem :github => 'haconiwa/mruby-linux-namespace'
+  # mruby-process, mruby-exec, mruby-process-sys are also useful
 end
 ```
 
 ## example
 
 ```ruby
-> Namespace.getuid
+## Using mruby-process-sys
+> Process::Sys.getuid
  => 500
-> Namespace.getgid
+> Process::Sys.getgid
  => 500
 
 > Namespace.unshare(Namespace::CLONE_NEWUSER|Namespace::CLONE_NEWNET)
  => 0
 
-> Namespace.getuid
- => 65534
-> Namespace.getgid
+> Process::Sys.getuid
+ => 65534 ... unknown
+> Process::Sys.getgid
  => 65534
 
 > File.open('/proc/self/uid_map','wb+').write('0 500 1')
@@ -39,12 +41,20 @@ end
  => 7
 >
  => nil
-> Namespace.getuid
+> Process::Sys.getuid
  => 0
-> Namespace.getgid
+> Process::Sys.getgid
  => 0
 >
 ```
+
+### Available APIs
+
+* `Namecpace.unshare(flag)`
+* `Namecpace.setns(flag, pid: pid or fd: fd)`
+* `Namecpace.clone(flag) { #do something... e.g. exec }` - Note that `clone(2)` support is experimental/Recommended to exec() fast
+
+Please see `sample/*.rb` or `test/*.rb`
 
 ## License
 
