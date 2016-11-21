@@ -9,6 +9,7 @@
 #define _GNU_SOURCE 1
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <sched.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -16,10 +17,15 @@
 #include <fcntl.h>
 #include <error.h>
 #include <features.h>
+#include <signal.h>
+#include <pthread.h>
 
 #include <mruby.h>
 #include <mruby/data.h>
 #include <mruby/error.h>
+#include <mruby/string.h>
+#include <mruby/proc.h>
+
 #include "mrb_namespace.h"
 
 #define DONE mrb_gc_arena_restore(mrb, 0);
@@ -178,6 +184,68 @@ static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(ns_count);
 }
 
+struct mrb_clone_params {
+  mrb_state *mrb;
+  mrb_value block;
+};
+static volatile struct mrb_clone_params* clone_params = NULL;
+
+static int mrb_clone_childfunc(void *params)
+{
+  if(!clone_params) {
+    printf("[BUG] No clone params...\n");
+    abort();
+  }
+
+  mrb_state *mrb = clone_params->mrb;
+  mrb_value ret = mrb_yield_with_class(mrb, clone_params->block, 0, NULL, mrb_nil_value(), mrb->object_class);
+  /* mrb_funcall(mrb, mrb_obj_value(mrb->object_class), "puts", 1, mrb_str_new_lit(mrb, "Hello from clone")); */
+
+  _exit(0);
+  return 0;
+}
+
+#define STACK_SIZE 4096
+
+static mrb_value mrb_namespace_clone(mrb_state *mrb, mrb_value self)
+{
+  struct mrb_clone_params *p;
+  mrb_int flag;
+  mrb_value block;
+  char *stack, *stack_top;
+  int pid;
+
+  mrb_get_args(mrb, "i&", &flag, &block);
+
+  if (!mrb_nil_p(block)) {
+    p = (struct mrb_clone_params *)malloc(sizeof(struct mrb_clone_params));
+    p->mrb = mrb;
+    p->block = block;
+
+    stack = malloc(STACK_SIZE);
+    if (p == NULL || stack == NULL)
+      mrb_sys_fail(mrb, "malloc failed");
+
+    stack_top = stack + STACK_SIZE;
+
+    clone_params = p;
+    pid = clone(
+      mrb_clone_childfunc,
+      stack_top,
+      SIGCHLD|flag,
+      NULL);
+    if(pid < 0) {
+      perror("clone");
+      mrb_sys_fail(mrb, "clone failed");
+    }
+
+    return mrb_fixnum_value(pid);
+  }
+
+  mrb_raise(mrb, E_ARGUMENT_ERROR, "block must be passed.");
+  return mrb_nil_value();
+}
+
 void mrb_mruby_linux_namespace_gem_init(mrb_state *mrb)
 {
   struct RClass *namespace;
@@ -189,6 +257,7 @@ void mrb_mruby_linux_namespace_gem_init(mrb_state *mrb)
   mrb_define_class_method(mrb, namespace, "getuid", mrb_namespace_getuid, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, namespace, "getgid", mrb_namespace_getgid, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, namespace, "getpid", mrb_namespace_getpid, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, namespace, "clone",  mrb_namespace_clone,  (MRB_ARGS_REQ(1)|MRB_ARGS_BLOCK()));
 
   mrb_define_const(mrb, namespace, "CLONE_VM",             mrb_fixnum_value(CLONE_VM));
   mrb_define_const(mrb, namespace, "CLONE_FS",             mrb_fixnum_value(CLONE_FS));
