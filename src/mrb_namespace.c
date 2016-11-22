@@ -67,21 +67,6 @@ static int mrb_namespace_setns(mrb_state *mrb, int fd, int nstype) {
   return setns(fd, nstype);
 }
 
-static mrb_value mrb_namespace_getuid(mrb_state *mrb, mrb_value self)
-{
-  return mrb_fixnum_value((mrb_int)getuid());
-}
-
-static mrb_value mrb_namespace_getgid(mrb_state *mrb, mrb_value self)
-{
-  return mrb_fixnum_value((mrb_int)getgid());
-}
-
-static mrb_value mrb_namespace_getpid(mrb_state *mrb, mrb_value self)
-{
-  return mrb_fixnum_value((mrb_int)getpid());
-}
-
 static mrb_value mrb_namespace_unshare(mrb_state *mrb, mrb_value self)
 {
   int unshare_flags = 0;
@@ -254,9 +239,6 @@ void mrb_mruby_linux_namespace_gem_init(mrb_state *mrb)
   mrb_define_class_method(mrb, namespace, "unshare", mrb_namespace_unshare, MRB_ARGS_REQ(1));
   mrb_define_class_method(mrb, namespace, "setns_by_fd", mrb_namespace_setns_by_fd, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, namespace, "setns_by_pid", mrb_namespace_setns_by_pid, MRB_ARGS_REQ(2));
-  mrb_define_class_method(mrb, namespace, "getuid", mrb_namespace_getuid, MRB_ARGS_NONE());
-  mrb_define_class_method(mrb, namespace, "getgid", mrb_namespace_getgid, MRB_ARGS_NONE());
-  mrb_define_class_method(mrb, namespace, "getpid", mrb_namespace_getpid, MRB_ARGS_NONE());
   mrb_define_class_method(mrb, namespace, "clone",  mrb_namespace_clone,  (MRB_ARGS_REQ(1)|MRB_ARGS_BLOCK()));
 
   mrb_define_const(mrb, namespace, "CLONE_VM",             mrb_fixnum_value(CLONE_VM));
