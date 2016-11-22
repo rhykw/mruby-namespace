@@ -6,5 +6,7 @@ MRuby::Build.new do |conf|
   end
   conf.gembox 'default'
   conf.gem '../mruby-linux-namespace'
+  conf.gem mgem: 'mruby-io'
+
   conf.enable_test
 end
