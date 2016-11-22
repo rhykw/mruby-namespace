@@ -166,6 +166,10 @@ static mrb_value mrb_namespace_persist_ns(mrb_state *mrb, mrb_value self)
 
   mrb_get_args(mrb, "iiz", &pid, &flag, &dest);
 
+  if(!pid) {
+    pid = (mrb_int)getpid();
+  }
+
   char *procpath;
   if(mrb_namespace_pid_to_nsfile(mrb, &procpath, (pid_t)pid, (int)flag) < 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "ns file detection failed");
@@ -252,7 +256,7 @@ void mrb_mruby_linux_namespace_gem_init(mrb_state *mrb)
 {
   struct RClass *namespace;
   namespace = mrb_define_module(mrb, "Namespace");
-  mrb_define_class_method(mrb, namespace, "unshare", mrb_namespace_unshare, MRB_ARGS_REQ(1));
+  mrb_define_class_method(mrb, namespace, "do_unshare", mrb_namespace_unshare, MRB_ARGS_REQ(1));
   mrb_define_class_method(mrb, namespace, "setns_by_fd", mrb_namespace_setns_by_fd, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, namespace, "setns_by_pid", mrb_namespace_setns_by_pid, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, namespace, "persist_ns", mrb_namespace_persist_ns, MRB_ARGS_REQ(3));
