@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mount.h>
 #include <fcntl.h>
 #include <error.h>
 #include <features.h>
@@ -42,44 +43,8 @@ static int setns(int fd, int nstype) {
 }
 #endif
 
-typedef struct {
-} mrb_namespace_data;
-
-static const struct mrb_data_type mrb_namespace_data_type = {
-  "mrb_namespace_data", mrb_free,
-};
-
-static mrb_value mrb_namespace_init(mrb_state *mrb, mrb_value self)
-{
-  mrb_namespace_data *data;
-
-  data = (mrb_namespace_data *)DATA_PTR(self);
-  if (data) {
-    mrb_free(mrb, data);
-  }
-  DATA_TYPE(self) = &mrb_namespace_data_type;
-  DATA_PTR(self) = NULL;
-
-  return self;
-}
-
 static int mrb_namespace_setns(mrb_state *mrb, int fd, int nstype) {
   return setns(fd, nstype);
-}
-
-static mrb_value mrb_namespace_getuid(mrb_state *mrb, mrb_value self)
-{
-  return mrb_fixnum_value((mrb_int)getuid());
-}
-
-static mrb_value mrb_namespace_getgid(mrb_state *mrb, mrb_value self)
-{
-  return mrb_fixnum_value((mrb_int)getgid());
-}
-
-static mrb_value mrb_namespace_getpid(mrb_state *mrb, mrb_value self)
-{
-  return mrb_fixnum_value((mrb_int)getpid());
 }
 
 static mrb_value mrb_namespace_unshare(mrb_state *mrb, mrb_value self)
@@ -106,12 +71,48 @@ static mrb_value mrb_namespace_setns_by_fd(mrb_state *mrb, mrb_value self)
   return mrb_fixnum_value(ret);
 }
 
+static int mrb_namespace_pid_to_nsfile(mrb_state *mrb, char** procpath, pid_t _pid, int flag) {
+  const char *procpath_fmt = "/proc/%i/ns/%s";
+  int ret = 0;
+  int pid = (int)_pid;
+
+  switch (flag) {
+  case CLONE_NEWNS:
+    ret = asprintf(procpath, procpath_fmt, pid, "mnt");
+    break;
+  case CLONE_NEWUTS:
+    ret = asprintf(procpath, procpath_fmt, pid, "uts");
+    break;
+  case CLONE_NEWIPC:
+    ret = asprintf(procpath, procpath_fmt, pid, "ipc");
+    break;
+  case CLONE_NEWUSER:
+    ret = asprintf(procpath, procpath_fmt, pid, "user");
+    break;
+  case CLONE_NEWPID:
+    ret = asprintf(procpath, procpath_fmt, pid, "pid");
+    break;
+  case CLONE_NEWNET:
+    ret = asprintf(procpath, procpath_fmt, pid, "net");
+    break;
+#ifdef CLONE_NEWCGROUP
+  case CLONE_NEWCGROUP:
+    ret = asprintf(procpath, procpath_fmt, pid, "cgroup");
+    break;
+#endif
+  default:
+    mrb_raise(mrb, NULL, "invalid namespace id. check that flag is or'ed?");
+    return -1;
+  }
+
+  return ret;
+}
+
 static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
 {
   int pid, nsflag, fileno, ret;
   int ns_count = 0;
   char *procpath;
-  const char *procpath_fmt = "/proc/%i/ns/%s";
 
 #ifdef CLONE_NEWCGROUP
   int namespaces[8] = {
@@ -142,35 +143,9 @@ static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
     int curns = nsflag & namespaces[i];
     if(!curns) continue;
 
-    switch (curns) {
-    case CLONE_NEWNS:
-      asprintf(&procpath, procpath_fmt, pid, "mnt");
-      break;
-    case CLONE_NEWUTS:
-      asprintf(&procpath, procpath_fmt, pid, "uts");
-      break;
-    case CLONE_NEWIPC:
-      asprintf(&procpath, procpath_fmt, pid, "ipc");
-      break;
-    case CLONE_NEWUSER:
-      asprintf(&procpath, procpath_fmt, pid, "user");
-      break;
-    case CLONE_NEWPID:
-      asprintf(&procpath, procpath_fmt, pid, "pid");
-      break;
-    case CLONE_NEWNET:
-      asprintf(&procpath, procpath_fmt, pid, "net");
-      break;
-#ifdef CLONE_NEWCGROUP
-    case CLONE_NEWCGROUP:
-      asprintf(&procpath, procpath_fmt, pid, "cgroup");
-      break;
-#endif
-    default:
-      mrb_raise(mrb, NULL, "invalid namespace id");
-      return mrb_fixnum_value(-1);
+    if(mrb_namespace_pid_to_nsfile(mrb, &procpath, (pid_t)pid, curns) < 0) {
+      mrb_raise(mrb, E_RUNTIME_ERROR, "ns file detection failed");
     }
-
     fileno = open(procpath, O_RDONLY);
 
     ret = mrb_namespace_setns(mrb, fileno, curns);
@@ -182,6 +157,37 @@ static mrb_value mrb_namespace_setns_by_pid(mrb_state *mrb, mrb_value self)
   }
 
   return mrb_fixnum_value(ns_count);
+}
+
+static mrb_value mrb_namespace_persist_ns(mrb_state *mrb, mrb_value self)
+{
+  mrb_int pid, flag;
+  char *dest;
+
+  mrb_get_args(mrb, "iiz", &pid, &flag, &dest);
+
+  if(!pid) {
+    pid = (mrb_int)getpid();
+  }
+
+  char *procpath;
+  if(mrb_namespace_pid_to_nsfile(mrb, &procpath, (pid_t)pid, (int)flag) < 0) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "ns file detection failed");
+  }
+
+  int dest_fd;
+  if((dest_fd = open(dest, O_WRONLY|O_CREAT, 0660)) < 0){
+    mrb_sys_fail(mrb, "open dest file failed");
+  }
+  if(futimens(dest_fd, NULL) < 0){
+    mrb_sys_fail(mrb, "futimens failed");
+  }
+  close(dest_fd);
+
+  if(mount(procpath, dest, "none", MS_BIND, NULL) < 0){
+    mrb_sys_fail(mrb, "mount failed - cannot bind ns file to other location");
+  }
+  return mrb_fixnum_value(0);
 }
 
 struct mrb_clone_params {
@@ -249,14 +255,11 @@ static mrb_value mrb_namespace_clone(mrb_state *mrb, mrb_value self)
 void mrb_mruby_linux_namespace_gem_init(mrb_state *mrb)
 {
   struct RClass *namespace;
-  namespace = mrb_define_class(mrb, "Namespace", mrb->object_class);
-  mrb_define_method(mrb, namespace, "initialize", mrb_namespace_init, MRB_ARGS_NONE());
-  mrb_define_class_method(mrb, namespace, "unshare", mrb_namespace_unshare, MRB_ARGS_REQ(1));
+  namespace = mrb_define_module(mrb, "Namespace");
+  mrb_define_class_method(mrb, namespace, "do_unshare", mrb_namespace_unshare, MRB_ARGS_REQ(1));
   mrb_define_class_method(mrb, namespace, "setns_by_fd", mrb_namespace_setns_by_fd, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, namespace, "setns_by_pid", mrb_namespace_setns_by_pid, MRB_ARGS_REQ(2));
-  mrb_define_class_method(mrb, namespace, "getuid", mrb_namespace_getuid, MRB_ARGS_NONE());
-  mrb_define_class_method(mrb, namespace, "getgid", mrb_namespace_getgid, MRB_ARGS_NONE());
-  mrb_define_class_method(mrb, namespace, "getpid", mrb_namespace_getpid, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, namespace, "persist_ns", mrb_namespace_persist_ns, MRB_ARGS_REQ(3));
   mrb_define_class_method(mrb, namespace, "clone",  mrb_namespace_clone,  (MRB_ARGS_REQ(1)|MRB_ARGS_BLOCK()));
 
   mrb_define_const(mrb, namespace, "CLONE_VM",             mrb_fixnum_value(CLONE_VM));
