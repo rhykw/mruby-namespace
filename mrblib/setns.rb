@@ -1,4 +1,4 @@
-class Namespace
+module Namespace
   def self.setns(flag, options)
     fd = options[:fd]
     pid = options[:pid]

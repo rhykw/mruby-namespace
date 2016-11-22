@@ -42,27 +42,6 @@ static int setns(int fd, int nstype) {
 }
 #endif
 
-typedef struct {
-} mrb_namespace_data;
-
-static const struct mrb_data_type mrb_namespace_data_type = {
-  "mrb_namespace_data", mrb_free,
-};
-
-static mrb_value mrb_namespace_init(mrb_state *mrb, mrb_value self)
-{
-  mrb_namespace_data *data;
-
-  data = (mrb_namespace_data *)DATA_PTR(self);
-  if (data) {
-    mrb_free(mrb, data);
-  }
-  DATA_TYPE(self) = &mrb_namespace_data_type;
-  DATA_PTR(self) = NULL;
-
-  return self;
-}
-
 static int mrb_namespace_setns(mrb_state *mrb, int fd, int nstype) {
   return setns(fd, nstype);
 }
@@ -234,8 +213,7 @@ static mrb_value mrb_namespace_clone(mrb_state *mrb, mrb_value self)
 void mrb_mruby_linux_namespace_gem_init(mrb_state *mrb)
 {
   struct RClass *namespace;
-  namespace = mrb_define_class(mrb, "Namespace", mrb->object_class);
-  mrb_define_method(mrb, namespace, "initialize", mrb_namespace_init, MRB_ARGS_NONE());
+  namespace = mrb_define_module(mrb, "Namespace");
   mrb_define_class_method(mrb, namespace, "unshare", mrb_namespace_unshare, MRB_ARGS_REQ(1));
   mrb_define_class_method(mrb, namespace, "setns_by_fd", mrb_namespace_setns_by_fd, MRB_ARGS_REQ(2));
   mrb_define_class_method(mrb, namespace, "setns_by_pid", mrb_namespace_setns_by_pid, MRB_ARGS_REQ(2));
