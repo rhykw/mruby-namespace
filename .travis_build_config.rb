@@ -6,7 +6,8 @@ MRuby::Build.new do |conf|
   end
   conf.gembox 'default'
   conf.gem '../mruby-linux-namespace'
-  conf.gem mgem: 'mruby-io'
-
+  unless ENV['CI']
+    conf.gem mgem: 'mruby-io'
+  end
   conf.enable_test
 end
