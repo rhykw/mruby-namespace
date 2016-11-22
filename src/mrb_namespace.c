@@ -211,7 +211,8 @@ static int mrb_clone_childfunc(void *params)
   return 0;
 }
 
-#define STACK_SIZE 4096
+/* ulimit -s often says 8MB, so... */
+#define STACK_SIZE 8 * 1024 * 1024
 
 static mrb_value mrb_namespace_clone(mrb_state *mrb, mrb_value self)
 {
